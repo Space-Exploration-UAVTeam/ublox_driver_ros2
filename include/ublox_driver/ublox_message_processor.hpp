@@ -22,13 +22,13 @@
 #define UBLOX_MESSAGE_PROCESSOR_HPP_
 
 #include <map>
-#include <ros/ros.h>
-#include <sensor_msgs/NavSatFix.h>
 #include <glog/logging.h>
 #include <gnss_comm/gnss_constant.hpp>
 #include <gnss_comm/gnss_utility.hpp>
 #include <gnss_comm/gnss_ros.hpp>
 
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.h>
 #include "parameter_manager.hpp"
 
 using namespace gnss_comm;
