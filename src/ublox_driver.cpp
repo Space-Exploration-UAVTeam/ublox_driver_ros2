@@ -1,22 +1,22 @@
 /**
-* This file is part of ublox-driver.
-*
-* Copyright (C) 2021 Aerial Robotics Group, Hong Kong University of Science and Technology
-* Author: CAO Shaozu (shaozu.cao@gmail.com)
-*
-* ublox-driver is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* ublox-driver is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with ublox-driver. If not, see <http://www.gnu.org/licenses/>.
-*/
+ * This file is part of ublox-driver.
+ *
+ * Copyright (C) 2021 Aerial Robotics Group, Hong Kong University of Science and Technology
+ * Author: CAO Shaozu (shaozu.cao@gmail.com)
+ *
+ * ublox-driver is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * ublox-driver is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with ublox-driver. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <vector>
 #include <string>
@@ -28,7 +28,7 @@
 // #include <sys/procmgr.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "parameter_manager.hpp"
 #include "serial_handler.hpp"
@@ -56,7 +56,7 @@ std::string time_str()
     time_ptr = time(NULL);
     tm *tm_local = localtime(&time_ptr);
     ss << tm_local->tm_year + 1900 << '_' << tm_local->tm_mon + 1 << '_'
-       << tm_local->tm_mday << '_' << tm_local->tm_hour << '_' 
+       << tm_local->tm_mday << '_' << tm_local->tm_hour << '_'
        << tm_local->tm_min << '_' << tm_local->tm_sec;
     return ss.str();
 }
@@ -81,18 +81,19 @@ bool config_receiver(std::shared_ptr<SerialHandler> serial, std::vector<RcvConfi
     UbloxMessageProcessor::build_config_msg(rcv_configs, rcv_config_buff.get(), msg_len);
     std::unique_lock<std::mutex> ack_lk(ack_m);
     ack_flag = 0;
-    serial->addCallback(std::bind(&config_ack_callback, 
-        std::placeholders::_1, std::placeholders::_2));
+    serial->addCallback(std::bind(&config_ack_callback,
+                                  std::placeholders::_1, std::placeholders::_2));
     serial->writeRaw(rcv_config_buff.get(), msg_len);
     serial->startRead();
     // block, wait ack
-    ack_cv.wait(ack_lk, []{return ack_flag != 0;});
+    ack_cv.wait(ack_lk, []
+                { return ack_flag != 0; });
     serial->stop_read();
     ack_lk.unlock();
     // resume
     if (ack_flag == 1)
         return true;
-    
+
     return false;
 }
 
@@ -101,10 +102,15 @@ int main(int argc, char **argv)
     ::google::InitGoogleLogging(argv[0]);
     FLAGS_logtostderr = 1;
 
-    if (!interrupted.is_lock_free())  return 10;
+    if (!interrupted.is_lock_free())
+        return 10;
 
-    ros::init(argc, argv, "ublox_driver");
-    ros::NodeHandle nh("~");
+    // ros::init(argc, argv, "ublox_driver");
+    rclcpp::init(argc, argv);
+    // ros::NodeHandle nh("~");
+    rclcpp::NodeOptions node_options;
+    node_options.automatically_declare_parameters_from_overrides(true);
+    auto nh = rclcpp::Node::make_shared("ublox_driver", node_options);
 
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = ctrl_c_handler;
@@ -114,10 +120,13 @@ int main(int argc, char **argv)
     // procmgr_ability( 0, PROCMGR_AID_CLOCKSET );
 
     std::string config_filepath;
-    nh.getParam("config_file", config_filepath);
+    nh->get_parameter("config_file", config_filepath);
+    config_filepath = "/home/dale/DaleData/AutonomousLandingStaff/ws_ublox/install/ublox_driver/share/ublox_driver/config/driver_config.yaml";
     // config_filepath = argv[1];
+    std::cout << "Config_file: " << config_filepath << std::endl;
     ParameterManager &pm(ParameterManager::getInstance());
     pm.read_parameter(config_filepath);
+    std::cout << "End of ParameterManager configuration." << std::endl;
 
     std::shared_ptr<SerialHandler> serial;
     std::shared_ptr<SocketHandler> socket;
@@ -127,19 +136,22 @@ int main(int argc, char **argv)
     std::shared_ptr<SerialHandler> output_serial;
     if (pm.to_ros)
         ublox_msg_processor.reset(new UbloxMessageProcessor(nh));
+
     if (pm.to_file)
     {
         const std::string t_str = time_str();
         const std::string dump_filepath = pm.dump_dir + "/" + t_str + ".ubx";
         file_dumper.reset(new FileDumper(dump_filepath));
     }
+    
     if (pm.to_serial)
     {
         output_serial.reset(new SerialHandler(pm.output_serial_port, pm.serial_baud_rate));
     }
-    
+
     if (pm.online)
     {
+        std::cout << "ParameterManager online." << std::endl;
         serial.reset(new SerialHandler(pm.input_serial_port, pm.serial_baud_rate));
 
         if (pm.config_receiver_at_start)
@@ -149,59 +161,78 @@ int main(int argc, char **argv)
             else
                 LOG(FATAL) << "Error occurs when configuring the receiver.";
         }
-        
+
         if (pm.input_rtcm)
         {
             socket.reset(new SocketHandler("localhost", pm.rtcm_tcp_port));
-            socket->addCallback(std::bind(&SerialHandler::writeRaw, serial.get(), 
-                std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
+            socket->addCallback(std::bind(&SerialHandler::writeRaw, serial.get(),
+                                          std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
             socket->startRead();
+            std::cout << "ParameterManager input_rtcm." << std::endl;
         }
-        
+        else
+            std::cout << "No ParameterManager input_rtcm." << std::endl;
+
         if (pm.to_ros)
-            serial->addCallback(std::bind(&UbloxMessageProcessor::process_data, 
-                ublox_msg_processor.get(), std::placeholders::_1, std::placeholders::_2));
-            
+        {
+            serial->addCallback(std::bind(&UbloxMessageProcessor::process_data,
+                                          ublox_msg_processor.get(), std::placeholders::_1, std::placeholders::_2));
+            std::cout << "ParameterManager TO_ROS." << std::endl;
+        }
+
         if (pm.to_file)
-            serial->addCallback(std::bind(&FileDumper::process_data, file_dumper.get(), 
-                std::placeholders::_1, std::placeholders::_2));
-        
+        {
+            serial->addCallback(std::bind(&FileDumper::process_data, file_dumper.get(),
+                                          std::placeholders::_1, std::placeholders::_2));
+            std::cout << "ParameterManager TO_FILE." << std::endl;
+        }
+
         if (pm.to_serial)
-            serial->addCallback(std::bind(&SerialHandler::writeRaw, output_serial.get(), 
-                std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
+        {
+            serial->addCallback(std::bind(&SerialHandler::writeRaw, output_serial.get(),
+                                          std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
+            std::cout << "ParameterManager TO_SERIAL." << std::endl;
+        }
 
         serial->startRead();
     }
     else
     {
+        std::cout << "ParameterManager offline." << std::endl;
         file_loader.reset(new FileLoader(pm.ubx_filepath, pm.serial_baud_rate));
 
         if (pm.to_ros)
-            file_loader->addCallback(std::bind(&UbloxMessageProcessor::process_data, 
-                ublox_msg_processor.get(), std::placeholders::_1, std::placeholders::_2));
-            
+            file_loader->addCallback(std::bind(&UbloxMessageProcessor::process_data,
+                                               ublox_msg_processor.get(), std::placeholders::_1, std::placeholders::_2));
+
         if (pm.to_file)
-            file_loader->addCallback(std::bind(&FileDumper::process_data, file_dumper.get(), 
-                std::placeholders::_1, std::placeholders::_2));
-            
+            file_loader->addCallback(std::bind(&FileDumper::process_data, file_dumper.get(),
+                                               std::placeholders::_1, std::placeholders::_2));
+
         if (pm.to_serial)
-            file_loader->addCallback(std::bind(&SerialHandler::writeRaw, output_serial.get(), 
-                std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
+            file_loader->addCallback(std::bind(&SerialHandler::writeRaw, output_serial.get(),
+                                               std::placeholders::_1, std::placeholders::_2, pm.IO_TIMEOUT_MS));
 
         file_loader->startRead();
     }
+    std::cout << "End of configuration." << std::endl;
 
-    ros::Rate loop(50);
-    while (ros::ok() && !interrupted)
-    {
-        ros::spinOnce();
-        loop.sleep();
-    }
+    // ros::Rate loop(50);
+    // while (ros::ok() && !interrupted)
+    // {
+    //     ros::spinOnce();
+    //     loop.sleep();
+    // }
+    // rclcpp::Rate loop(50);
+    // while (rclcpp::ok() && !interrupted)
+    // {
+    //     rclcpp::spin_some(nh);
+    //     loop.sleep();
+    // }
 
-    if (serial)
-        serial->close();
-    if (file_loader)
-        file_loader->close();
-    
+    rclcpp::executors::MultiThreadedExecutor executor;
+    executor.add_node(nh);
+    executor.spin();
+
     return 0;
 }
