@@ -49,14 +49,18 @@ UbloxMessageProcessor::UbloxMessageProcessor(const std::shared_ptr<rclcpp::Node>
 
 void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
 {
-    std::cout << "into process_data" << std::endl;
+    // std::cout << "into process_data" << std::endl;
     if (!verify_msg(data, len))
         return;
+    
+    const uint16_t msg_type = (data[2]<<8) | data[3];
 
-    const uint16_t msg_type = (data[2] << 8) | data[3];
-
+    static int AAA_zyb = 0;
+    AAA_zyb++;
+    AAA_zyb%=10;
     if (msg_type == UBX_RXMRAWX_ID)
     {
+        // std::cout<<"-- UBX_RXMRAWX_ID --"<<AAA_zyb<<std::endl;
         std::vector<ObsPtr> meas = parse_meas_msg(data, len);
         if (meas.empty())
             return;
@@ -66,6 +70,7 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
     }
     else if (msg_type == UBX_RXMSFRBX_ID)
     {
+        // std::cout<<"-- UBX_RXMSFRBX_ID --"<<AAA_zyb<<std::endl;
         std::vector<double> iono_params;
         EphemBasePtr ephem = parse_subframe(data, len, iono_params);
         if (ephem && ephem->ttr.time != 0)
@@ -102,6 +107,7 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
     }
     else if (msg_type == UBX_TIM_TP_ID)
     {
+        // std::cout<<"-- UBX_TIM_TP_ID --"<<AAA_zyb<<std::endl;
         TimePulseInfoPtr tp_info = parse_time_pulse(data, len);
         if (tp_info && tp_info->time.time != 0)
         {
@@ -112,7 +118,11 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
     }
     else if (msg_type == UBX_NAVPOS_ID)
     {
+        // std::cout<<"-- UBX_NAVPOS_ID --"<<AAA_zyb<<std::endl;
         PVTSolutionPtr pvt_soln = parse_pvt(data, len);
+        // if (!pvt_soln )   std::cout<<"!pvt_soln"<<std::endl;
+        // else
+        // if (pvt_soln->time.time == 0)   std::cout<<"pvt_soln->time.time == 0"<<std::endl;
         if (!pvt_soln || pvt_soln->time.time == 0)
             return;
 
@@ -129,6 +139,7 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
         }
 
         GnssPVTSolnMsg pvt_msg = pvt2msg(pvt_soln);
+        // std::cout<<"latitude: "<<pvt_msg.latitude<<" longitude: "<<pvt_msg.longitude<<" altitude: "<<pvt_msg.altitude<<std::endl;
         pub_pvt_->publish(pvt_msg);
 
         sensor_msgs::msg::NavSatFix lla_msg;

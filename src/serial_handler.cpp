@@ -20,9 +20,9 @@
 
 #include "serial_handler.hpp"
 
-SerialHandler::SerialHandler(std::string port, unsigned int baud_rate, unsigned int buf_size) : port_(port),
-                                                                                                data_buf_(new uint8_t[buf_size]), serial_(io_service_, port), keep_working_task_(io_service_),
-                                                                                                write_timeout_(timer_io_service_), MSG_HEADER_LEN(ParameterManager::MSG_HEADER_LEN)
+SerialHandler::SerialHandler(std::string port, unsigned int baud_rate, unsigned int buf_size) : port_(port), 
+                    data_buf_(new uint8_t[buf_size]), serial_(io_service_, port), keep_working_task_(io_service_), 
+                    write_timeout_(timer_io_service_), MSG_HEADER_LEN(ParameterManager::MSG_HEADER_LEN)
 {
     serial_.set_option(boost::asio::serial_port_base::baud_rate(baud_rate));
     if (!serial_.is_open())
@@ -50,7 +50,8 @@ void SerialHandler::startRead()
                             boost::asio::transfer_all(),
                             boost::bind(&SerialHandler::read_handler, this, boost::asio::placeholders::error,
                                         boost::asio::placeholders::bytes_transferred));
-    std::cout << "SerialHandler::statRead" << std::endl;
+
+    // std::cout << "------------------------startRead-------------------------------" << std::endl;
 }
 
 void SerialHandler::stop_read()
@@ -91,6 +92,7 @@ void SerialHandler::read_handler(const boost::system::error_code &error, std::si
 {
     if (!error)
     {
+        // std::cout << "into !error:" << std::endl;
         if (bytes_transferred != MSG_HEADER_LEN)
         {
             std::cerr << "Not received enough bytes: " << bytes_transferred << " while expect " << MSG_HEADER_LEN << '\n';
@@ -98,8 +100,10 @@ void SerialHandler::read_handler(const boost::system::error_code &error, std::si
         }
 
         uint32_t header_remains = MSG_HEADER_LEN;
+        // std::cout << "header_remains:" << header_remains << std::endl;
         while (header_remains != 0)
         {
+            // std::cout << "into while { header_remains != 0 }" << header_remains << std::endl;
             uint32_t pream_idx = 0;
             void config(const std::vector<std::string> &receiver_configs);
             // search for u-blox preamble sequence
@@ -125,6 +129,8 @@ void SerialHandler::read_handler(const boost::system::error_code &error, std::si
                 }
             }
         }
+
+        // std::cout << "out while" << std::endl;
 
         uint16_t *msg_len_ptr = reinterpret_cast<uint16_t *>(data_buf_.get() + 4);
         // buffer for message data and CRC

@@ -56,7 +56,7 @@ std::string time_str()
     time_ptr = time(NULL);
     tm *tm_local = localtime(&time_ptr);
     ss << tm_local->tm_year + 1900 << '_' << tm_local->tm_mon + 1 << '_'
-       << tm_local->tm_mday << '_' << tm_local->tm_hour << '_'
+       << tm_local->tm_mday << '_' << tm_local->tm_hour << '_' 
        << tm_local->tm_min << '_' << tm_local->tm_sec;
     return ss.str();
 }
@@ -81,19 +81,18 @@ bool config_receiver(std::shared_ptr<SerialHandler> serial, std::vector<RcvConfi
     UbloxMessageProcessor::build_config_msg(rcv_configs, rcv_config_buff.get(), msg_len);
     std::unique_lock<std::mutex> ack_lk(ack_m);
     ack_flag = 0;
-    serial->addCallback(std::bind(&config_ack_callback,
-                                  std::placeholders::_1, std::placeholders::_2));
+    serial->addCallback(std::bind(&config_ack_callback, 
+        std::placeholders::_1, std::placeholders::_2));
     serial->writeRaw(rcv_config_buff.get(), msg_len);
     serial->startRead();
     // block, wait ack
-    ack_cv.wait(ack_lk, []
-                { return ack_flag != 0; });
+    ack_cv.wait(ack_lk, []{return ack_flag != 0;});
     serial->stop_read();
     ack_lk.unlock();
     // resume
     if (ack_flag == 1)
         return true;
-
+    
     return false;
 }
 
@@ -121,11 +120,13 @@ int main(int argc, char **argv)
 
     std::string config_filepath;
     nh->get_parameter("config_file", config_filepath);
-    config_filepath = "/home/dale/DaleData/AutonomousLandingStaff/ws_ublox/install/ublox_driver/share/ublox_driver/config/driver_config.yaml";
+    // config_filepath = "/home/dale/DaleData/AutonomousLandingStaff/ws_ublox/install/ublox_driver/share/ublox_driver/config/driver_config.yaml";
     // config_filepath = argv[1];
     std::cout << "Config_file: " << config_filepath << std::endl;
+
     ParameterManager &pm(ParameterManager::getInstance());
     pm.read_parameter(config_filepath);
+    std::cout << "Config_file 2: " << config_filepath << std::endl;
     std::cout << "End of ParameterManager configuration." << std::endl;
 
     std::shared_ptr<SerialHandler> serial;
@@ -143,7 +144,7 @@ int main(int argc, char **argv)
         const std::string dump_filepath = pm.dump_dir + "/" + t_str + ".ubx";
         file_dumper.reset(new FileDumper(dump_filepath));
     }
-    
+
     if (pm.to_serial)
     {
         output_serial.reset(new SerialHandler(pm.output_serial_port, pm.serial_baud_rate));
@@ -151,8 +152,9 @@ int main(int argc, char **argv)
 
     if (pm.online)
     {
-        std::cout << "ParameterManager online." << std::endl;
+        std::cout << "ParameterManager online: 1." << std::endl;
         serial.reset(new SerialHandler(pm.input_serial_port, pm.serial_baud_rate));
+        std::cout << "serial reset." << std::endl;
 
         if (pm.config_receiver_at_start)
         {
@@ -161,6 +163,8 @@ int main(int argc, char **argv)
             else
                 LOG(FATAL) << "Error occurs when configuring the receiver.";
         }
+        else
+            std::cout << "not config_receiver_at_start ." << std::endl;
 
         if (pm.input_rtcm)
         {
@@ -223,16 +227,18 @@ int main(int argc, char **argv)
     //     ros::spinOnce();
     //     loop.sleep();
     // }
-    // rclcpp::Rate loop(50);
-    // while (rclcpp::ok() && !interrupted)
-    // {
-    //     rclcpp::spin_some(nh);
-    //     loop.sleep();
-    // }
 
-    rclcpp::executors::MultiThreadedExecutor executor;
-    executor.add_node(nh);
-    executor.spin();
+    rclcpp::Rate loop(50);
+    while (rclcpp::ok() && !interrupted)
+    {
+        rclcpp::spin_some(nh);
+        loop.sleep();
+    }
 
+    if (serial)
+        serial->close();
+    if (file_loader)
+        file_loader->close();
+    
     return 0;
 }
