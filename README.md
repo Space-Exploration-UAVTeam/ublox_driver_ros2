@@ -42,14 +42,14 @@ cd ~/colcon_ws/
 colcon build --symlink-install --packages-select ublox_driver
 source ~/colcon_ws/install/setup.bash
 ```
-## 3. Run with your u-blox receiver
+## 3. Run with your u-blox receiver **(changed)**
 Our software can take the serial stream from the u-blox receiver as an input source. 
 
-**Before running the package, you need to configure your receiver using [u-center](https://www.u-blox.com/en/product/u-center) to output at least `UBX-RXM-RAWX`, `UBX-RXM-SFRBX` and `UBX-NAV-PVT` messages to a specific serial port (a sample config used in our system can be found at *config/ucenter_config_f9p_gvins.txt*). In u-center, you have to 
+Before running the package, you need to configure your receiver using [u-center](https://www.u-blox.com/en/product/u-center) to output at least `UBX-RXM-RAWX`, `UBX-RXM-SFRBX` and `UBX-NAV-PVT` messages to a specific serial port (a sample config used in our system can be found at *config/ucenter_config_f9p_gvins.txt*). In u-center, you have to 
 + click `View` -> `Message View` to enable the three message 
 + click `View` -> `Configuration View` -> `CFG(configuration)` -> `Save current configuration` -> `select all the four devices` -> `Send`
 
-to finish the configuration.**
+to finish the configuration.
 
 Then connecting your computer(Linux) with the receiver, make sure the serial port appears as a file in the `/dev/` directory. Then add your account to `dialout` group to obtain permission on serial r/w operation via (no need to substitute $USER):
 ```
@@ -57,18 +57,22 @@ sudo usermod -aG dialout $USER
 ```
 Open *config/driver_config.yaml*, set `online` and `to_ros` to 1, and adjust `input_serial_port` and `serial_baud_rate` according to your setting. Run the package with:
 ```
-roslaunch ublox_driver ublox_driver.launch
+ros2 launch ublox_driver ublox_driver.launch.py
 ```
 
 Open another terminal, echo the ROS message by:
 ```
-rostopic echo /ublox_driver/receiver_lla
+ros2 topic echo /ublox_driver/receiver_pvt
+```
+or
+```
+ros2 topic echo /ublox_driver/receiver_pvt
 ```
 If everything goes smoothly, there should be some ROS messages coming out. Note that some ROS topics remain inactive until the receiver gets GNSS signals. 
 
 Besides the ROS message, you can record the serial stream to a file(`to_file` option) or forward the stream to another serial port(`to_serial` option). All output options can be turned on simultaneously.
 
-### Obtain RTK Solution (Optional) **Not fully Tested**
+### 3.1 Obtain RTK Solution (Optional) **Not fully Tested**
 **The RTK system we use is a combination of the moving receiver and the GNSS base station and the RTCM is already configured. So we don't do the following `forward` procedures, while the system is in fix status, the field `carr_soln` in `/ublox_driver/receiver_pvt` message becomes 2.**
 
 If your receiver owns an internal RTK engine (for example, ZED-F9P), you can input RTCM messages from the GNSS base station to the receiver in order to obtain the cm-level accurate RTK localization result. Our software can forward the RTCM stream from a local socket to the receiver's serial port. Nowadays many GNSS stations distribute their RTCM streams via [NTRIP protocol](https://en.wikipedia.org/wiki/Networked_Transport_of_RTCM_via_Internet_Protocol) and you can easily fetch the NTRIP data and map it to a local socket via [RTKLIB](http://www.rtklib.com/). Following those commands to build RTKLIB and setup the RTCM stream:
