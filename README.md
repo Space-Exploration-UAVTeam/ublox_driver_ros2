@@ -28,10 +28,10 @@ We use [Eigen 3.3.3](https://gitlab.com/libeigen/eigen/-/archive/3.3.3/eigen-3.3
 Our software utilizes [Boost](https://www.boost.org/) library for serial and socket manipulation. Using command `sudo apt-get install libboost-all-dev` to install *Boost*.
 
 ### 1.5 **gnss_comm_interfaces & gnss_comm(all changed)**
-This package also requires [gnss_comm_interfaces](https://github.com/Space-Exploration-UAVTeam/gnss_comm_interfaces) for ROS2 message definitions and [gnss_comm(ros2 version)](https://github.com/Space-Exploration-UAVTeam/gnss_comm) for some utility functions. Follow the instructions in [gnss_comm](https://github.com/Space-Exploration-UAVTeam/gnss_comm##1-prerequisites) to build the two packages.
+This package also requires [gnss_comm_interfaces](https://github.com/Space-Exploration-UAVTeam/gnss_comm_interfaces) for ROS2 message definitions and [gnss_comm(ros2 version)](https://github.com/Space-Exploration-UAVTeam/gnss_comm) for some utility functions. Follow the instructions in [gnss_comm(ros2 version)](https://github.com/Space-Exploration-UAVTeam/gnss_comm##1-prerequisites) to build the two packages.
 
 ## 2. Build ublox_driver
-Clone the repository to your colcon workspace and make sure gnss_comm and gnss_comm_interfaces are build and sourced (for example `~/colcon_ws/`):
+Clone the repository to your colcon workspace (for example `~/colcon_ws/`). Make sure gnss_comm and gnss_comm_interfaces are placed under `~/colcon_ws` and successfully built and sourced:
 ```
 cd ~/colcon_ws/src/
 git clone https://github.com/Space-Exploration-UAVTeam/ublox_driver_ros2.git "./ublox_driver"
@@ -39,7 +39,7 @@ git clone https://github.com/Space-Exploration-UAVTeam/ublox_driver_ros2.git "./
 Then build the package with:
 ```
 cd ~/colcon_ws/
-colcon build --symlink-install
+colcon build --symlink-install --packages-select ublox_driver
 source ~/colcon_ws/install/setup.bash
 ```
 ## 3. Run with your u-blox receiver
