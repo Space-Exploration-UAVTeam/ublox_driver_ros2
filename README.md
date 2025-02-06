@@ -45,11 +45,11 @@ source ~/colcon_ws/install/setup.bash
 ## 3. Run with your u-blox receiver
 Our software can take the serial stream from the u-blox receiver as an input source. 
 
-Before running the package, you need to configure your receiver using [u-center](https://www.u-blox.com/en/product/u-center) to output at least `UBX-RXM-RAWX`, `UBX-RXM-SFRBX` and `UBX-NAV-PVT` messages to a specific serial port (a sample config used in our system can be found at *config/ucenter_config_f9p_gvins.txt*). In u-center, you have to 
+**Before running the package, you need to configure your receiver using [u-center](https://www.u-blox.com/en/product/u-center) to output at least `UBX-RXM-RAWX`, `UBX-RXM-SFRBX` and `UBX-NAV-PVT` messages to a specific serial port (a sample config used in our system can be found at *config/ucenter_config_f9p_gvins.txt*). In u-center, you have to 
 + click `View` -> `Message View` to enable the three message 
 + click `View` -> `Configuration View` -> `CFG(configuration)` -> `Save current configuration` -> `select all the four devices` -> `Send`
 
-to finish the configuration.
+to finish the configuration.**
 
 Then connecting your computer(Linux) with the receiver, make sure the serial port appears as a file in the `/dev/` directory. Then add your account to `dialout` group to obtain permission on serial r/w operation via (no need to substitute $USER):
 ```
