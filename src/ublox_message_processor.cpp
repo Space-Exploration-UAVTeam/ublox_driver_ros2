@@ -139,7 +139,7 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
         }
 
         GnssPVTSolnMsg pvt_msg = pvt2msg(pvt_soln);
-        // std::cout<<"latitude: "<<pvt_msg.latitude<<" longitude: "<<pvt_msg.longitude<<" altitude: "<<pvt_msg.altitude<<std::endl;
+        std::cout<<"latitude: "<<pvt_msg.latitude<<" longitude: "<<pvt_msg.longitude<<" altitude: "<<pvt_msg.altitude<<std::endl;
         pub_pvt_->publish(pvt_msg);
 
         sensor_msgs::msg::NavSatFix lla_msg;
