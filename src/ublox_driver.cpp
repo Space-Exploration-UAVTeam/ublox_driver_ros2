@@ -121,7 +121,7 @@ int main(int argc, char **argv)
     nh->get_parameter("config_file", config_filepath);
     // config_filepath = "/home/dale/DaleData/AutonomousLandingStaff/ws_ublox/install/ublox_driver/share/ublox_driver/config/driver_config.yaml";
     // config_filepath = argv[1];
-    std::cout << "Config_filepath: " << config_filepath << std::endl;
+    RCLCPP_INFO_STREAM(nh->get_logger(), "Config_filepath: " << config_filepath << std::endl);
 
     ParameterManager &pm(ParameterManager::getInstance());
     pm.read_parameter(config_filepath);

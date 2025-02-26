@@ -18,7 +18,7 @@ def generate_launch_description():
         package='ublox_driver',
         executable='ublox_driver',
         name='ublox_driver',
-        output='screen',
+        output='both',
         parameters=[
             {'config_file': config_path}
         ]
