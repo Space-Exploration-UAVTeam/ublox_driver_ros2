@@ -52,12 +52,12 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
     // std::cout << "into process_data" << std::endl;
     if (!verify_msg(data, len))
         return;
-    
-    const uint16_t msg_type = (data[2]<<8) | data[3];
+
+    const uint16_t msg_type = (data[2] << 8) | data[3];
 
     static int AAA_zyb = 0;
     AAA_zyb++;
-    AAA_zyb%=10;
+    AAA_zyb %= 10;
     if (msg_type == UBX_RXMRAWX_ID)
     {
         // std::cout<<"-- UBX_RXMRAWX_ID --"<<AAA_zyb<<std::endl;
@@ -139,7 +139,9 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
         }
 
         GnssPVTSolnMsg pvt_msg = pvt2msg(pvt_soln);
-        std::cout<<"latitude: "<<pvt_msg.latitude<<" longitude: "<<pvt_msg.longitude<<" altitude: "<<pvt_msg.altitude<<std::endl;
+        pvt_msg.header.stamp = rclcpp::Clock().now();
+        std::cout << "latitude: " << pvt_msg.latitude << " longitude: " << pvt_msg.longitude << " altitude: " << pvt_msg.altitude << std::endl;
+
         pub_pvt_->publish(pvt_msg);
 
         sensor_msgs::msg::NavSatFix lla_msg;
