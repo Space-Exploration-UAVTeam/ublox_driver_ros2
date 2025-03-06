@@ -120,9 +120,10 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
     {
         // std::cout<<"-- UBX_NAVPOS_ID --"<<AAA_zyb<<std::endl;
         PVTSolutionPtr pvt_soln = parse_pvt(data, len);
-        // if (!pvt_soln )   std::cout<<"!pvt_soln"<<std::endl;
-        // else
-        // if (pvt_soln->time.time == 0)   std::cout<<"pvt_soln->time.time == 0"<<std::endl;
+        if (!pvt_soln)
+            std::cout << "!pvt_soln" << std::endl;
+        else if (pvt_soln->time.time == 0)
+            std::cout << "pvt_soln->time.time == 0" << std::endl;
         if (!pvt_soln || pvt_soln->time.time == 0)
             return;
 
@@ -266,7 +267,10 @@ PVTSolutionPtr UbloxMessageProcessor::parse_pvt(const uint8_t *msg_data, const u
         return pvt_soln;
     }
     if (curr_time.time == 0)
+    {
+        LOG(ERROR) << "ubx nav-pvt message curr_time.time == 0";
         return pvt_soln;
+    }
     const uint8_t *p = msg_data + 6;
     uint32_t itow = *reinterpret_cast<const uint32_t *>(p);
     uint32_t week = 0;
