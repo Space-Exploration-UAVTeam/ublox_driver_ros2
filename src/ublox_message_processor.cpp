@@ -141,7 +141,13 @@ void UbloxMessageProcessor::process_data(const uint8_t *data, size_t len)
 
         GnssPVTSolnMsg pvt_msg = pvt2msg(pvt_soln);
         pvt_msg.header.stamp = rclcpp::Clock().now();
-        std::cout << "latitude: " << pvt_msg.latitude << " longitude: " << pvt_msg.longitude << " altitude: " << pvt_msg.altitude << std::endl;
+        static bool cout_once_flag = false;
+        if (!cout_once_flag)
+        {
+            std::cout << "This is a falg message which lets you know that PVT messages can be handled." << std::endl;
+            std::cout << "Current coarse latitude: " << pvt_msg.latitude << " longitude: " << pvt_msg.longitude << " altitude: " << pvt_msg.altitude << std::endl;
+            cout_once_flag = true;
+        }
 
         pub_pvt_->publish(pvt_msg);
 
